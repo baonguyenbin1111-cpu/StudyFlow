@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyFlow - Pomodoro</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    text-align:center;
+    background:#f4f6f9;
+    margin:0;
+    transition:0.3s;
+}
+.container{
+    margin-top:50px;
+}
+h1{
+    color:#333;
+}
+.timer{
+    font-size:60px;
+    margin:20px 0;
+}
+.mode{
+    font-size:20px;
+    font-weight:bold;
+}
+button{
+    padding:10px 20px;
+    margin:5px;
+    font-size:16px;
+    border:none;
+    border-radius:8px;
+    cursor:pointer;
+}
+.start{ background:#4CAF50; color:white;}
+.stop{ background:#f44336; color:white;}
+.reset{ background:#2196F3; color:white;}
+.stats{
+    margin-top:30px;
+    font-size:18px;
+}
+.chart-container{
+    width:300px;
+    margin:20px auto;
+}
+.break-mode{
+    background:#fff3cd;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🌱 StudyFlow</h1>
+
+    <div class="mode" id="modeText">Chế độ: Học 📚</div>
+    <div class="timer" id="timer">25:00</div>
+    <p>Tiến trình: <span id="percent">0%</span></p>
+
+    <button class="start" onclick="startTimer()">Bắt đầu</button>
+    <button class="stop" onclick="stopTimer()">Dừng</button>
+    <button class="reset" onclick="resetTimer()">Reset</button>
+
+    <div class="stats">
+        <p>🎯 Phiên hôm nay: <span id="sessions">0</span></p>
+        <p>⏳ Tổng phút học hôm nay: <span id="totalMinutes">0</span></p>
+    </div>
+
+    <div class="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
+</div>
+
+<script>
+let studyMinutes = 25;
+let breakMinutes = 5;
+
+let time = studyMinutes * 60;
+let timerInterval = null;
+let isRunning = false;
+let isBreak = false;
+
+// 🔥 Lưu tổng số GIÂY học
+let totalStudySeconds = parseInt(localStorage.getItem("totalStudySeconds")) || 0;
+let sessions = parseInt(localStorage.getItem("sessions")) || 0;
+
+updateStats();
+
+// 🔊 Âm thanh
+const sound = new Audio("https://www.soundjay.com/buttons/sounds/button-3.mp3");
+
+// ===== CẬP NHẬT THỐNG KÊ =====
+function updateStats(){
+    document.getElementById("sessions").innerText = sessions;
+    document.getElementById("totalMinutes").innerText = Math.floor(totalStudySeconds / 60);
+}
+
+// ===== HIỂN THỊ =====
+function updateDisplay(){
+    let minutes = Math.floor(time / 60);
+    let seconds = time % 60;
+
+    document.getElementById("timer").innerText =
+        String(minutes).padStart(2,'0') + ":" +
+        String(seconds).padStart(2,'0');
+
+    let totalTime = (isBreak ? breakMinutes : studyMinutes) * 60;
+    let percent = Math.floor(((totalTime - time) / totalTime) * 100);
+
+    document.getElementById("percent").innerText = percent + "%";
+
+    myChart.data.datasets[0].data = [percent, 100 - percent];
+    myChart.update();
+}
+
+// ===== START =====
+function startTimer(){
+    if(isRunning) return;
+    isRunning = true;
+
+    timerInterval = setInterval(() => {
+
+        time--;
+
+        // 🔥 Chỉ cộng giây khi đang học
+        if(!isBreak){
+            totalStudySeconds++;
+            localStorage.setItem("totalStudySeconds", totalStudySeconds);
+            updateStats();
+        }
+
+        if(time <= 0){
+            clearInterval(timerInterval);
+            isRunning = false;
+            sound.play();
+
+            if(!isBreak){
+                sessions++;
+                localStorage.setItem("sessions", sessions);
+
+                isBreak = true;
+                time = breakMinutes * 60;
+
+                document.getElementById("modeText").innerText = "Chế độ: Nghỉ ☕";
+                document.body.classList.add("break-mode");
+
+            } else {
+                isBreak = false;
+                time = studyMinutes * 60;
+
+                document.getElementById("modeText").innerText = "Chế độ: Học 📚";
+                document.body.classList.remove("break-mode");
+            }
+
+            updateDisplay();
+            startTimer();
+
+        } else {
+            updateDisplay();
+        }
+
+    }, 1000);
+}
+
+// ===== STOP =====
+function stopTimer(){
+    clearInterval(timerInterval);
+    isRunning = false;
+}
+
+// ===== RESET =====
+function resetTimer(){
+    clearInterval(timerInterval);
+    isRunning = false;
+    isBreak = false;
+    time = studyMinutes * 60;
+
+    document.getElementById("modeText").innerText = "Chế độ: Học 📚";
+    document.body.classList.remove("break-mode");
+
+    updateDisplay();
+}
+
+// ===== CHART =====
+const ctx = document.getElementById('myChart');
+const myChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Tiến trình', 'Còn lại'],
+        datasets: [{
+            data: [0, 100],
+        }]
+    },
+    options:{
+        responsive:true,
+        maintainAspectRatio:true,
+        animation:false,
+        cutout:'70%'
+    }
+});
+
+updateDisplay();
+</script>
+
+</body>
+</html>
